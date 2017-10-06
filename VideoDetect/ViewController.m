@@ -11,6 +11,7 @@
 #import "GPUImage.h"
 #import "PBJVisionUtilities.h"
 #import "UIImage+GIF.h"
+#import <Photos/Photos.h>
 
 @interface ViewController () <GPUImageVideoCameraDelegate> {
     NSURL *_videoUrl;
@@ -18,6 +19,7 @@
     GPUImageMovie *_videoFile;
     NSMutableArray *_frameTimes;
     NSTimer *_processTimer;
+    NSString *_gifUrlString;
 }
 
 @end
@@ -44,6 +46,11 @@
             
         }
     }];
+    
+    //long press gesture to save image
+    UILongPressGestureRecognizer *longPressGes = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(saveImage:)];
+    [self.gifImageView addGestureRecognizer:longPressGes];
+    self.gifImageView.userInteractionEnabled = YES;
     
 }
 
@@ -138,6 +145,7 @@
                 dispatch_async(dispatch_get_main_queue(), ^{
                     NSData *data = [NSData dataWithContentsOfFile:object];
                     weakSelf.gifImageView.image = [UIImage sd_animatedGIFWithData:data];
+                    _gifUrlString = object;
                 });
             }];
         }
@@ -153,9 +161,24 @@
     self.logTextView.text = @"";
 }
 
-- (void) printLog:(NSString *)log
+- (void) saveImage:(id)sender
 {
-    self.logTextView.text = [log stringByAppendingFormat:@"\n%@", self.logTextView.text];
+    if (!_gifUrlString) {
+        return;
+    }
+    
+    [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
+        [PHAssetChangeRequest creationRequestForAssetFromImageAtFileURL:[NSURL fileURLWithPath:_gifUrlString]];
+    } completionHandler:^(BOOL success, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (success) {
+                [self showMessageView:@"Saved"];
+            }else{
+                [self showMessageView:@"Failed to save."];
+            }
+        });
+    }];
+    
 }
 
 #pragma mark - ImagePickerDelegate
@@ -190,6 +213,32 @@
 - (void) imagePickerControllerDidCancel: (UIImagePickerController *) picker
 {
     [picker  dismissViewControllerAnimated: YES completion:NULL];
+    
+}
+
+#pragma mark - Utilities
+- (void) printLog:(NSString *)log
+{
+    self.logTextView.text = [log stringByAppendingFormat:@"\n%@", self.logTextView.text];
+}
+
+-(void) showMessageView: (NSString *) message
+{
+    UIView* msgMaskView =[[UIView alloc] initWithFrame:CGRectMake(90,210,140,60)];
+    msgMaskView.layer.cornerRadius =15;
+    msgMaskView.opaque = NO;
+    msgMaskView.backgroundColor =[UIColor colorWithWhite:0.0f alpha:0.6f];
+    UILabel* msgLabel =[[UILabel alloc] initWithFrame:CGRectMake(0,0,140,60)];
+    msgLabel.text = message;
+    msgLabel.font =[UIFont boldSystemFontOfSize:14.0f];
+    msgLabel.textAlignment = NSTextAlignmentCenter;
+    msgLabel.textColor =[UIColor colorWithWhite:1.0f alpha:1.0f];
+    msgLabel.backgroundColor =[UIColor clearColor];
+    [msgMaskView addSubview:msgLabel];
+    [self.view addSubview:msgMaskView];
+    msgMaskView.center = CGPointMake(msgMaskView.superview.frame.size.width/2, msgMaskView.superview.frame.size.height/2);
+    
+    [NSTimer scheduledTimerWithTimeInterval:2 target:msgMaskView selector:@selector(removeFromSuperview) userInfo:nil repeats:NO];
     
 }
 
