@@ -133,6 +133,11 @@
         idx ++;
         if (selectedFrameTimeArray.count == max) break;
     }
+    if (selectedFrameTimeArray.count == 0) {
+        [selectedFrameTimeArray addObject:[NSValue valueWithCMTime:kCMTimeZero]];//0s
+        [selectedFrameTimeArray addObject:[NSValue valueWithCMTime:CMTimeAdd(kCMTimeZero, CMTimeMake(3, 1))]];//3s
+        [selectedFrameTimeArray addObject:[NSValue valueWithCMTime:CMTimeAdd(kCMTimeZero, CMTimeMake(6, 1))]];//6s
+    }
     
     //3. concat clips
     [PBJVisionUtilities composeAndExportVideo:_videoUrl durations:selectedFrameTimeArray block:^(NSURL *url, NSError *error) {
