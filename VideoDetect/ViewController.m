@@ -161,24 +161,26 @@
     self.logTextView.text = @"";
 }
 
-- (void) saveImage:(id)sender
+- (void) saveImage:(UILongPressGestureRecognizer *)gestureRecognizer
 {
-    if (!_gifUrlString) {
-        return;
+    if ([gestureRecognizer state] == UIGestureRecognizerStateEnded)
+    {
+        if (!_gifUrlString) {
+            return;
+        }
+        
+        [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
+            [PHAssetChangeRequest creationRequestForAssetFromImageAtFileURL:[NSURL fileURLWithPath:_gifUrlString]];
+        } completionHandler:^(BOOL success, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (success) {
+                    [self showMessageView:@"Saved"];
+                }else{
+                    [self showMessageView:@"Failed to save."];
+                }
+            });
+        }];
     }
-    
-    [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
-        [PHAssetChangeRequest creationRequestForAssetFromImageAtFileURL:[NSURL fileURLWithPath:_gifUrlString]];
-    } completionHandler:^(BOOL success, NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (success) {
-                [self showMessageView:@"Saved"];
-            }else{
-                [self showMessageView:@"Failed to save."];
-            }
-        });
-    }];
-    
 }
 
 #pragma mark - ImagePickerDelegate
