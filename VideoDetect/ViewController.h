@@ -8,8 +8,11 @@
 
 #import <UIKit/UIKit.h>
 
-@interface ViewController : UIViewController
+@interface ViewController : UIViewController <UINavigationControllerDelegate, UIImagePickerControllerDelegate>
 
+@property (nonatomic, weak) IBOutlet UIImageView *gifImageView;
+@property (nonatomic, weak) IBOutlet UIView *spinnerView;
+@property (nonatomic, weak) IBOutlet UITextView *logTextView;
 
 @end
 
