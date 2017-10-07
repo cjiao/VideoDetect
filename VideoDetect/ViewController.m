@@ -116,19 +116,33 @@
     }];
     
     //2. for the top 3 frame time, catch video clip
-    int max = 3;
+    int max = 4;
     int idx = 0;
-    float previewTime = 0;
+    
     NSMutableArray *selectedFrameTimeArray = [NSMutableArray new];
+    NSMutableArray *selectedSeconds = [NSMutableArray new];
     for (NSArray *values in sortedArray)
     {
         CGFloat intensity = [values.firstObject floatValue];
         CMTime frameTime = [values.lastObject CMTimeValue];
-        float seconds = (frameTime.value/frameTime.timescale*1.0);
-        if (previewTime < seconds - 3) {
-            [self printLog:[NSString stringWithFormat:@"%ld. Intensity %f happened on %f seconds", selectedFrameTimeArray.count, intensity, seconds]];
+        bool covered = false;
+        long long seconds = frameTime.value/frameTime.timescale;
+        if (seconds > 1) {
+            for (NSNumber *selectedSec in selectedSeconds) {
+                if (seconds >= selectedSec.longLongValue - 2 && seconds <= selectedSec.longLongValue + 2) {
+                    covered = true;
+                }
+            }
+        } else {
+            covered = true;
+        }
+        
+        
+        if (!covered) {
+            [self printLog:[NSString stringWithFormat:@"%ld. Intensity %f happened on %zd seconds", selectedFrameTimeArray.count, intensity, seconds]];
+            frameTime = CMTimeSubtract(frameTime, CMTimeMake(3, 2)); //subscract 1.5 sec
             [selectedFrameTimeArray addObject:[NSValue valueWithCMTime:frameTime]];
-            previewTime = seconds;
+            [selectedSeconds addObject:@(seconds)];
         }
         idx ++;
         if (selectedFrameTimeArray.count == max) break;
@@ -139,8 +153,23 @@
         [selectedFrameTimeArray addObject:[NSValue valueWithCMTime:CMTimeAdd(kCMTimeZero, CMTimeMake(6, 1))]];//6s
     }
     
+    // sort by time
+    NSArray *sortedSelectedArray = [selectedFrameTimeArray sortedArrayUsingComparator:^(id obj1, id obj2){
+        if ([obj1 isKindOfClass:[NSValue class]] && [obj2 isKindOfClass:[NSValue class]]) {
+            CMTime time1 = ((NSValue *)obj1).CMTimeValue;
+            CMTime time2 = ((NSValue *)obj2).CMTimeValue;
+            int result = CMTimeCompare(time1, time2);
+            if (result < 0) {
+                return (NSComparisonResult)NSOrderedAscending;
+            } else if (result > 0) {
+                return (NSComparisonResult)NSOrderedDescending;
+            }
+        }
+        return (NSComparisonResult)NSOrderedSame;
+    }];
+    
     //3. concat clips
-    [PBJVisionUtilities composeAndExportVideo:_videoUrl durations:selectedFrameTimeArray block:^(NSURL *url, NSError *error) {
+    [PBJVisionUtilities composeAndExportVideo:_videoUrl durations:sortedSelectedArray block:^(NSURL *url, NSError *error) {
         if (!error) {
             [weakSelf printLog:[NSString stringWithFormat: @"Extract and concat the video to %@", url.relativeString]];
             
@@ -250,3 +279,4 @@
 }
 
 @end
+
